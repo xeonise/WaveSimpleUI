@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wave</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #000;
+      --panel: #0f0f10;
+      --border: rgba(255,255,255,0.12);
+      --fg: #f5f7fa;
+      --muted: #b9c0cc;
+      --accent: #fff;
+      --radius: 16px;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --info: #3b82f6;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg);
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+      overflow: hidden;
+    }
+
+    .main { height: 100dvh; display: grid; grid-template-rows: auto auto auto 1fr auto; gap: 14px; padding: 18px clamp(14px, 3vw, 26px); }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(8px) saturate(110%);
+      box-shadow: 0 12px 28px rgba(0,0,0,.45);
+    }
+
+    header.panel { padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { font-weight: 800; letter-spacing:.2px; font-size: clamp(18px,2vw,22px); }
+    .muted { color: var(--muted); font-weight: 600; opacity:.9; }
+
+    .status { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; font-size: 12px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); display: inline-flex; gap: 8px; align-items: center; }
+    .pill { width: 8px; height: 8px; border-radius: 999px; }
+    .ok .pill{ background:var(--success);} .warn .pill{ background:var(--warning);} .err .pill{ background:var(--error);}
+
+    /* Tabs */
+    .tabs-container { display: flex; align-items: center; gap: 8px; padding: 0 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: var(--radius); }
+    .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; padding: 6px 4px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; background: transparent; border: none; color: var(--muted); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; border-radius: 8px; }
+    .tab:hover { background: rgba(255,255,255,0.05); }
+    .tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+    .tab-close { width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+    .tab-close:hover { background: rgba(255,255,255,0.1); }
+    .add-tab { padding: 8px; background: transparent; border: none; color: var(--muted); cursor: pointer; border-radius: 8px; }
+    .add-tab:hover { background: rgba(255,255,255,0.05); }
+
+    .top-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:12px; }
+    .top-left { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+
+    .bottom-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:12px; padding:12px; }
+
+    .editor-wrap{ min-height:0; position:relative; }
+    #editor{ position:absolute; inset:0; border-radius: calc(var(--radius) - 2px); overflow:hidden; }
+
+    /* Clients inline chips */
+    .clients { display:flex; gap:6px; flex-wrap:wrap; align-items:center; max-width: clamp(180px, 40vw, 700px); }
+    .clients .chip { user-select:none; }
+    .clients-empty { color: var(--muted); font-size: 12px; }
+
+    .btn { appearance:none; cursor:pointer; user-select:none; border-radius:12px; padding:10px 16px; font-weight:700; letter-spacing:.2px; border:1px solid #fff; background:#fff; color:#000; box-shadow: 0 6px 16px rgba(255,255,255,.08), inset 0 0 0 1px rgba(0,0,0,.05); transition: transform .12s ease, box-shadow .2s ease, opacity .2s ease; }
+    .btn:hover{ transform: translateY(-1px); box-shadow: 0 10px 22px rgba(255,255,255,.12); }
+    .btn:active{ transform: translateY(0); }
+    .btn.ghost{ background: transparent; color:#fff; border-color: rgba(255,255,255,.6); box-shadow:none; }
+
+    .picker { position: relative; }
+    .pick-display { display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,.03); cursor: pointer; min-width: 220px; }
+    .chip { display:inline-flex; align-items:center; gap:6px; font-size:12px; padding:4px 8px; border-radius:999px; background: rgba(255,255,255,.09); border:1px solid var(--border); }
+    .menu { 
+      position:absolute; 
+      bottom:calc(100% + 8px); 
+      left:0; 
+      z-index:20; 
+      width: 320px; 
+      max-height: 40vh; 
+      overflow:auto; 
+      background: #0a0a0b; 
+      border:1px solid var(--border); 
+      border-radius:14px; 
+      padding:8px; 
+      display:none; 
+      box-shadow: 0 18px 40px rgba(0,0,0,.65); 
+    }
+    .menu.open { display:block; }
+    .menu .row { display:flex; align-items:center; gap:10px; padding:8px; border-radius:10px; cursor: pointer; }
+    .menu .row:hover { background: rgba(255,255,255,.04); }
+    .menu input[type="checkbox"] { width:16px; height:16px; }
+    .menu .id { font-family:'JetBrains Mono', ui-monospace, monospace; font-size:11px; color:var(--muted); }
+    .menu label { cursor: pointer; flex: 1; }
+
+    .hint { font-size:12px; color:var(--muted); }
+
+    footer.panel { padding:10px 14px; font-size:12px; color:var(--muted); display:flex; justify-content:space-between; align-items:center; }
+    #toast { opacity:0; transition: opacity .4s ease; }
+
+    /* Notifications */
+    .notifications { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
+    .notification { padding: 12px 16px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; max-width: 320px; animation: slideIn 0.3s ease; }
+    .notification.success { border-left: 4px solid var(--success); }
+    .notification.error { border-left: 4px solid var(--error); }
+    .notification.warning { border-left: 4px solid var(--warning); }
+    .notification.info { border-left: 4px solid var(--info); }
+    .notification-content { flex: 1; }
+    .notification-close { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 16px; }
+    .notification-close:hover { color: var(--fg); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <header class="panel">
+      <div class="brand">Wave</div>
+      <div id="connStatus" class="status warn"><span class="pill"></span><span>Connecting…</span></div>
+    </header>
+
+    <div class="tabs-container">
+      <div class="tabs" id="tabs"></div>
+      <button class="add-tab" id="addTab" title="Add new tab">+</button>
+    </div>
+
+    <div class="panel top-controls">
+      <div class="top-left">
+        <div class="picker" id="clientPicker">
+          <div class="pick-display" id="pickerToggle" title="Select clients">
+            <span class="chip">All clients</span>
+          </div>
+          <div class="menu" id="pickerMenu" role="listbox" aria-multiselectable="true">
+            <div class="row"><input type="checkbox" id="allBox" checked><label for="allBox"><strong>All clients</strong></label></div>
+            <div id="clientRows"></div>
+          </div>
+        </div>
+
+        <div class="clients" id="clientChips">
+          <span class="clients-empty">No clients connected</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel editor-wrap">
+      <div id="editor" aria-label="Script editor"></div>
+    </div>
+
+    <div class="panel bottom-controls">
+      <div style="display: flex; gap: 10px;">
+        <button id="runBtn" class="btn">Execute ⏎</button>
+        <button id="clearBtn" class="btn ghost">Clear</button>
+      </div>
+    </div>
+
+    <footer class="panel">
+      <span>Wave Client Manager</span>
+      <span id="toast"></span>
+    </footer>
+  </div>
+
+  <div class="notifications" id="notifications"></div>
+
+  <!-- Monaco loader -->
+  <script>window.require = undefined;</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    const WS_URL = `ws://${location.hostname || 'localhost'}:61416/`;
+    let editor, ws, reconnectTimer;
+    const state = {
+      clients: new Map(), // id -> {id,name}
+      selected: new Set(),
+      selectAll: true,
+      tabs: [],
+      activeTabId: null,
+      tabCounter: 1
+    };
+
+    // ---------- Tabs ----------
+    function initTabs() {
+      const savedTabs = localStorage.getItem('wave-tabs');
+      const savedActive = localStorage.getItem('wave-active-tab');
+      if (savedTabs) {
+        try {
+          state.tabs = JSON.parse(savedTabs);
+          state.tabCounter = Math.max(...state.tabs.map(t => t.id), 0) + 1;
+        } catch (e) {
+          console.error('Failed to load tabs', e);
+          state.tabs = [];
+        }
+      }
+      if (state.tabs.length === 0) {
+        createNewTab();
+      } else {
+        renderTabs();
+        const active = savedActive ? Number(savedActive) : state.tabs[0].id;
+        switchToTab(active);
+      }
+    }
+
+    function saveTabs() {
+      localStorage.setItem('wave-tabs', JSON.stringify(state.tabs));
+      if (state.activeTabId != null) {
+        localStorage.setItem('wave-active-tab', String(state.activeTabId));
+      }
+    }
+
+    function createNewTab() {
+      const id = state.tabCounter++;
+      const newTab = { id, name: `Tab ${id}`, content: '' };
+      state.tabs.push(newTab);
+      renderTabs();
+      switchToTab(newTab.id);
+      saveTabs();
+    }
+
+    function renameTab(tabId, newName) {
+      const tab = state.tabs.find(t => t.id === tabId);
+      if (tab) {
+        tab.name = (newName || '').trim() || `Tab ${tabId}`;
+        renderTabs();
+        saveTabs();
+      }
+    }
+
+    function deleteTab(tabId) {
+      if (state.tabs.length <= 1) return;
+      const tabIndex = state.tabs.findIndex(t => t.id === tabId);
+      if (tabIndex === -1) return;
+      state.tabs.splice(tabIndex, 1);
+      renderTabs();
+      if (state.activeTabId === tabId) {
+        const fallback = state.tabs[Math.min(tabIndex, state.tabs.length - 1)];
+        switchToTab(fallback.id);
+      }
+      saveTabs();
+    }
+
+    function switchToTab(tabId) {
+      state.activeTabId = tabId;
+      const tab = state.tabs.find(t => t.id === tabId);
+      if (tab && editor) {
+        editor.setValue(tab.content || '');
+      }
+      updateActiveTabIndicator();
+      saveTabs();
+    }
+
+    function updateTabContent(content) {
+      const tab = state.tabs.find(t => t.id === state.activeTabId);
+      if (tab) {
+        tab.content = content;
+        saveTabs();
+      }
+    }
+
+    function renderTabs() {
+      const tabsContainer = document.getElementById('tabs');
+      tabsContainer.innerHTML = '';
+      state.tabs.forEach(tab => {
+        const tabEl = document.createElement('button');
+        tabEl.className = `tab ${tab.id === state.activeTabId ? 'active' : ''}`;
+        tabEl.textContent = tab.name;
+        tabEl.title = 'Double-click to rename';
+        tabEl.onclick = () => switchToTab(tab.id);
+        tabEl.ondblclick = (e) => {
+          e.stopPropagation();
+          const nn = prompt('Rename tab', tab.name);
+          if (nn !== null) renameTab(tab.id, nn);
+        };
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'tab-close';
+        closeBtn.innerHTML = '×';
+        closeBtn.title = 'Close tab';
+        closeBtn.onclick = (e) => { e.stopPropagation(); deleteTab(tab.id); };
+
+        tabEl.appendChild(closeBtn);
+        tabsContainer.appendChild(tabEl);
+      });
+    }
+
+    function updateActiveTabIndicator() {
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
+      const activeTab = document.querySelector(`.tab:nth-child(${idx + 1})`);
+      if (activeTab) activeTab.classList.add('active');
+    }
+
+    // ---------- Clients ----------
+    function renderClientChips() {
+      const box = document.getElementById('clientChips');
+      box.innerHTML = '';
+      if (state.clients.size === 0) {
+        box.innerHTML = '<span class="clients-empty">No clients connected</span>';
+        return;
+      }
+      
+      // Show selected clients or all if selectAll is true
+      const clientsToShow = state.selectAll ? 
+        Array.from(state.clients.values()) : 
+        Array.from(state.selected).map(id => state.clients.get(id)).filter(Boolean);
+      
+      if (clientsToShow.length === 0) {
+        box.innerHTML = '<span class="clients-empty">No clients selected</span>';
+        return;
+      }
+      
+      clientsToShow.forEach(c => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = c.name || c.id.slice(0,8);
+        chip.title = `${c.name || 'Client'} • ${c.id}`;
+        box.appendChild(chip);
+      });
+    }
+
+    function updateClientList() {
+      const rows = document.getElementById('clientRows');
+      rows.innerHTML = '';
+      state.clients.forEach(client => {
+        const row = document.createElement('div');
+        row.className = 'row';
+        const isChecked = state.selectAll || state.selected.has(client.id);
+        row.innerHTML = `
+          <input type="checkbox" id="client-${client.id}" ${isChecked ? 'checked' : ''} ${state.selectAll ? 'disabled' : ''}>
+          <label for="client-${client.id}">${client.name || 'Client'}</label>
+          <span class="id">${client.id.slice(0, 8)}</span>
+        `;
+        const checkbox = row.querySelector('input');
+        checkbox.addEventListener('change', e => {
+          if (e.target.checked) {
+            state.selected.add(client.id);
+          } else {
+            state.selected.delete(client.id);
+          }
+          updatePickerDisplay();
+          renderClientChips();
+        });
+        rows.appendChild(row);
+      });
+      renderClientChips();
+    }
+
+    function updatePickerDisplay() {
+      const toggle = document.getElementById('pickerToggle');
+      if (state.selectAll) {
+        toggle.innerHTML = '<span class="chip">All clients</span>';
+      } else if (state.selected.size === 0) {
+        toggle.innerHTML = '<span class="chip">No clients selected</span>';
+      } else if (state.selected.size === 1) {
+        const clientId = Array.from(state.selected)[0];
+        const client = state.clients.get(clientId);
+        toggle.innerHTML = `<span class="chip">${client?.name || clientId.slice(0,8)}</span>`;
+      } else {
+        toggle.innerHTML = `<span class="chip">${state.selected.size} clients</span>`;
+      }
+    }
+
+    // ---------- Notifications ----------
+    function showNotification(message, type = 'info', duration = 5000) {
+      const notifications = document.getElementById('notifications');
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.innerHTML = `
+        <div class="notification-content">${message}</div>
+        <button class="notification-close" title="Close">&times;</button>
+      `;
+      notification.querySelector('.notification-close').addEventListener('click', () => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+      });
+      notifications.appendChild(notification);
+
+      // Also try browser/system notification (if allowed)
+      try {
+        if (window.Notification && Notification.permission === 'granted') {
+          const title = type === 'error' ? 'Wave — Error' : 'Wave';
+          new Notification(title, { body: message });
+        }
+      } catch {}
+
+      if (duration > 0) {
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+          }
+        }, duration);
+      }
+      return notification;
+    }
+
+    // ---------- Connection ----------
+    function connect() {
+      if (ws?.readyState === WebSocket.OPEN) ws.close();
+      ws = new WebSocket(WS_URL);
+      setStatus('warn', 'Connecting…');
+
+      ws.onopen = () => {
+        setStatus('ok', 'Connected');
+        showNotification('Connected to server', 'success', 3000);
+        // Identify as UI
+        ws.send(JSON.stringify({ op: 'client/identify', data: { player: { name: 'Web UI' } } }));
+        // Request initial list
+        ws.send(JSON.stringify({ op: 'ui/requestClients' }));
+      };
+
+      ws.onclose = () => {
+        setStatus('err', 'Disconnected');
+        showNotification('Disconnected from server', 'error', 3000);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        setStatus('err', 'Connection error');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleMessage(data);
+        } catch (err) {
+          console.error('Failed to parse message:', err, event.data);
+        }
+      };
+    }
+
+    function handleMessage(data) {
+      switch (data.op) {
+        case 'client/list': {
+          state.clients.clear();
+          (data.data.clients || []).forEach(client => state.clients.set(client.id, client));
+          updateClientList();
+          updatePickerDisplay();
+          break;
+        }
+        case 'client/join': {
+          const newClient = data.data.client;
+          state.clients.set(newClient.id, newClient);
+          updateClientList();
+          updatePickerDisplay();
+          showNotification(`Client connected: ${newClient.name}`, 'info', 3000);
+          break;
+        }
+        case 'client/leave': {
+          const leftClientId = data.data.id;
+          const leftClient = state.clients.get(leftClientId);
+          if (leftClient) {
+            state.clients.delete(leftClientId);
+            state.selected.delete(leftClientId);
+            updateClientList();
+            updatePickerDisplay();
+            showNotification(`Client disconnected: ${leftClient.name}`, 'warning', 3000);
+          }
+          break;
+        }
+        case 'client/update': {
+          const { id, name } = data.data;
+          if (state.clients.has(id)) {
+            state.clients.get(id).name = name || state.clients.get(id).name;
+            updateClientList();
+            updatePickerDisplay();
+          } else {
+            // If we missed the join somehow, add it.
+            state.clients.set(id, { id, name: name || 'Client' });
+            updateClientList();
+            updatePickerDisplay();
+          }
+          break;
+        }
+        case 'notification': {
+          showNotification(data.data.message, data.data.type || 'info');
+          break;
+        }
+        default:
+          console.log('Received:', data);
+      }
+    }
+
+    function setStatus(type, text) {
+      const status = document.getElementById('connStatus');
+      status.className = `status ${type}`;
+      status.querySelector('span:last-child').textContent = text;
+    }
+
+    function showToast(text, duration = 3000) {
+      const toast = document.getElementById('toast');
+      toast.textContent = text;
+      toast.style.opacity = '1';
+      setTimeout(() => { toast.style.opacity = '0'; }, duration);
+    }
+
+    // ---------- Editor ----------
+    function initEditor() {
+      require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs' } });
+      require(['vs/editor/editor.main'], () => {
+        // Create a custom dark theme
+        monaco.editor.defineTheme('wave-dark', {
+          base: 'vs-dark',
+          inherit: true,
+          rules: [
+            { token: 'comment', foreground: '6A737D', fontStyle: 'italic' },
+            { token: 'keyword', foreground: 'F97583' },
+            { token: 'string', foreground: '9ECBFF' },
+            { token: 'number', foreground: '79B8FF' },
+            { token: 'identifier', foreground: 'E1E4E8' }
+          ],
+          colors: {
+            'editor.background': '#0a0a0a',
+            'editor.foreground': '#e1e4e8',
+            'editor.lineHighlightBackground': '#1a1a1a',
+            'editor.selectionBackground': '#3392FF44',
+            'editorCursor.foreground': '#ffffff',
+            'editorLineNumber.foreground': '#6a737d',
+            'editorLineNumber.activeForeground': '#e1e4e8',
+            'scrollbarSlider.background': '#ffffff20',
+            'scrollbarSlider.hoverBackground': '#ffffff30',
+            'scrollbarSlider.activeBackground': '#ffffff40'
+          }
+        });
+
+        editor = monaco.editor.create(document.getElementById('editor'), {
+          value: '',
+          language: 'lua',
+          theme: 'wave-dark',
+          fontSize: 14,
+          fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+          fontLigatures: true,
+          lineNumbers: 'on',
+          roundedSelection: false,
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          minimap: { enabled: false },
+          scrollbar: { 
+            useShadows: false,
+            verticalScrollbarSize: 10,
+            horizontalScrollbarSize: 10
+          },
+          renderWhitespace: 'selection',
+          cursorStyle: 'line',
+          cursorBlinking: 'blink'
+        });
+
+        // Start with active tab content (if any)
+        const active = state.tabs.find(t => t.id === state.activeTabId);
+        if (active) editor.setValue(active.content || '');
+
+        editor.onDidChangeModelContent(() => {
+          updateTabContent(editor.getValue());
+        });
+
+        // Ctrl/Cmd + Enter to run
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+          document.getElementById('runBtn').click();
+        });
+      });
+    }
+
+    // ---------- UI Init ----------
+    function init() {
+      // Ask for browser notifications permission (optional)
+      if (window.Notification && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch {}
+      }
+
+      initTabs();
+      initEditor();
+
+      document.getElementById('addTab').addEventListener('click', createNewTab);
+
+      document.getElementById('pickerToggle').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('pickerMenu').classList.toggle('open');
+      });
+
+      document.getElementById('allBox').addEventListener('change', e => {
+        state.selectAll = e.target.checked;
+        if (state.selectAll) {
+          state.selected.clear();
+        }
+        updateClientList();
+        updatePickerDisplay();
+      });
+
+      document.getElementById('runBtn').addEventListener('click', () => {
+        const script = editor.getValue();
+        if (!script.trim()) return;
+
+        const targets = state.selectAll ? [] : Array.from(state.selected);
+
+        ws?.send?.(JSON.stringify({
+          op: 'ui/broadcast',
+          data: { targets, textDocument: { text: script } }
+        }));
+
+        showToast('Executing script...');
+      });
+
+      document.getElementById('clearBtn').addEventListener('click', () => {
+        editor.setValue('');
+        updateTabContent('');
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.picker')) {
+          document.getElementById('pickerMenu').classList.remove('open');
+        }
+      });
+
+      connect();
+    }
+
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
