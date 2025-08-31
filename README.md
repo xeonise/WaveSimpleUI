@@ -1,5 +1,7 @@
-#simple ui
-a simple ui for wave, that I vibecoded, since I don't like the default one, how to use it:
+A simple ui for wave, that I vibecoded, since I don't like the default one, how to use it:
+First, you have to login to your account(the account MUST have a active subscription) in the Wave launcher, otherwise it won't work.
+Than, you have to download/build the injector for the UI:
+
 1. build it from the source (if you don't trust me)
 you can build it yourself, by downloading golang(https://go.dev/dl/)
 and than, in the directory typing:
